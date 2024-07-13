@@ -18,3 +18,11 @@ services:
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: true
     depends_on:
       - zookeeper
+  kafka_weather_producer:
+    build: data-ingestion/.
+    depends_on:
+      - kafka
+    environment:
+      OPEN_WEATHER_MAP_API_KEY: ${OPEN_WEATHER_MAP_API_KEY}
+      CITY_NAME: Warsaw
+      KAFKA_WEATHER_TOPIC: weather-data
