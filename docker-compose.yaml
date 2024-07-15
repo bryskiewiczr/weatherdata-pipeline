@@ -24,6 +24,7 @@ services:
     command: |
       "
       kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic weather_data --replication-factor 1 --partitions 1
+      echo 'Existing Kafka topics:'
       kafka-topics --bootstrap-server kafka:9092 --list
       "
 
@@ -54,6 +55,7 @@ services:
     image: bde2020/hadoop-namenode:2.0.0-hadoop2.7.4-java8
     environment:
       CLUSTER_NAME: test
+      CORE_CONF_fs_defaultFS: hdfs://hdfs-namenode:8020
     volumes: [hdfs-namenode:/hadoop/dfs/name]
     ports: ["9000:9000", "8020:8020"]
 
@@ -65,18 +67,61 @@ services:
     volumes: [hdfs-datanode:/hadoop/dfs/data]
     depends_on: [hdfs-namenode]
 
+  postgres:
+    image: postgres:12
+    environment:
+      POSTGRES_USER: hive
+      POSTGRES_PASSWORD: hive
+      POSTGRES_DB: metastore
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+
+  hive-metastore-init:
+    image: bde2020/hive:2.3.2-postgresql-metastore
+    environment:
+      HIVE_METASTORE_DB_TYPE: postgres
+      HIVE_METASTORE_DB_URI: "jdbc:postgresql://postgres:5432/metastore"
+      HIVE_METASTORE_DB_USER: hive
+      HIVE_METASTORE_DB_PASSWORD: hive
+      CORE_CONF_fs_defaultFS: hdfs://hdfs-namenode:8020
+    entrypoint: /bin/bash -c "export HIVE_CONF_DIR=/opt/hive/conf && /opt/hive/bin/schematool -initSchema -dbType postgres"
+    volumes: [./hive/hive-site.xml:/opt/hive/conf/hive-site.xml]
+    depends_on:
+      [hdfs-namenode, hdfs-datanode, postgres]
+
+  hive-metastore:
+    image: bde2020/hive:2.3.2-postgresql-metastore
+    environment:
+      HIVE_METASTORE_DB_TYPE: postgres
+      HIVE_METASTORE_DB_URI: "jdbc:postgresql://postgres:5432/metastore"
+      HIVE_METASTORE_DB_USER: hive
+      HIVE_METASTORE_DB_PASSWORD: hive
+      HIVE_METASTORE_PORT: 9083
+      CORE_CONF_fs_defaultFS: hdfs://hdfs-namenode:8020
+    command: /opt/hive/bin/hive --service metastore
+    ports: ["9083:9083"]
+    volumes: [./hive/hive-site.xml:/opt/hive/conf/hive-site.xml]
+    depends_on: [hive-metastore-init]
+
   hive:
     image: bde2020/hive:2.3.2-postgresql-metastore
     environment:
       HIVE_METASTORE_URI: thrift://hive-metastore:9083
       HIVE_CONF_hive_exec_scratchdir: /tmp/hive
       HIVE_CONF_hive_log_dir: /tmp/hive
+      CORE_CONF_fs_defaultFS: hdfs://hdfs-namenode:8020
     ports: ["10000:10000"]
-    depends_on: [hdfs-namenode, hdfs-datanode]
+    volumes: [./hive/hive-site.xml:/opt/hive/conf/hive-site.xml]
+    depends_on: [hive-metastore]
 
   hive-init:
     image: bde2020/hive:2.3.2-postgresql-metastore
-    volumes: [./hive/hive-init.sh:/docker-entrypoint-initdb.d/hive-init.sh]
+    environment:
+      HIVE_METASTORE_URI: thrift://hive-metastore:9083
+      HIVE_CONF_hive_exec_scratchdir: /tmp/hive
+      HIVE_CONF_hive_log_dir: /tmp/hive
+      CORE_CONF_fs_defaultFS: hdfs://hdfs-namenode:8020
+    volumes: [./hive/hive-init.sh:/docker-entrypoint-initdb.d/hive-init.sh, ./hive/hive-site.xml:/opt/hive/conf/hive-site.xml]
     depends_on: [hive]
     entrypoint: ["/docker-entrypoint-initdb.d/hive-init.sh"]
 
@@ -84,4 +129,6 @@ volumes:
   hdfs-namenode:
     external: false
   hdfs-datanode:
+    external: false
+  pgdata:
     external: false
