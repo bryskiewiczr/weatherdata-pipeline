@@ -43,4 +43,4 @@ PRODUCER = KafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVER, value_seriali
 while True:
     weather_data = fetch_weather_data()
     PRODUCER.send(KAFKA_TOPIC, weather_data)
-    time.sleep(600)  # fetch the data every ten minutes
+    time.sleep(300)  # fetch the data every five minutes
