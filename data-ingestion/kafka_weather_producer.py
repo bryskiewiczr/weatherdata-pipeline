@@ -6,10 +6,12 @@ import time
 from kafka import KafkaProducer, KafkaAdminClient
 from kafka.errors import NoBrokersAvailable
 
-API_KEY = os.getenv("OPEN_WEATHER_MAP_API_KEY")
+
+CITY_NAME = os.getenv("CITY_NAME")
+API_KEY = os.getenv("WEATHER_API_KEY")
 KAFKA_TOPIC = os.getenv("KAFKA_TOPIC")
 KAFKA_BOOTSTRAP_SERVER = "kafka:9092"
-API_URL = f"https://api.openweathermap.org/data/3.0/onecall?lat=52&lon=21&exclude=minutely,hourly,daily,alerts&appid={API_KEY}"
+API_URL = f"http://api.weatherapi.com/v1/current.json?key={API_KEY}&q={CITY_NAME}&aqi=no"
 
 
 def is_kafka_up() -> bool:

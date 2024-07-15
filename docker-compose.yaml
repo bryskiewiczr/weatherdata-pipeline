@@ -33,7 +33,7 @@ services:
     depends_on: [kafka]
     env_file: [.env]
     environment:
-      OPEN_WEATHER_MAP_API_KEY: ${OPEN_WEATHER_MAP_API_KEY}
+      WEATHER_API_KEY: ${WEATHER_API_KEY}
       CITY_NAME: Warsaw
       KAFKA_TOPIC: ${KAFKA_TOPIC}
 
